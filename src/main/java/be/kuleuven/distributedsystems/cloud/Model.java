@@ -17,6 +17,8 @@ public class Model {
     @Autowired
     private WebClient.Builder webClientBuilder;
 
+    private List<Booking> bookings = new ArrayList<>();
+
     public List<Show> getShows() {
 //        TODO: browse to all of the companies and group the results
         return webClientBuilder
@@ -119,55 +121,87 @@ public class Model {
     }
 
     public List<Booking> getBookings(String customer) {
-        // TODO: return all bookings from the customer
 
-        return new ArrayList<>();
+        return bookings
+                .stream()
+                .filter(booking -> booking.getCustomer().equals(customer))
+                .collect(Collectors.toList());
     }
 
     public List<Booking> getAllBookings() {
-        // TODO: return all bookings
-        return new ArrayList<>();
+        return bookings;
     }
 
     public Set<String> getBestCustomers() {
-        // TODO: return the best customer (highest number of tickets, return all of them if multiple customers have an equal amount)
-        return null;
+        Map<String, Integer> ticketCounter = new HashMap<>();
+        for(var booking: bookings) {
+            if (!ticketCounter.containsKey(booking.getCustomer())) {
+                ticketCounter.put(booking.getCustomer(), booking.getTickets().size());
+            } else {
+                ticketCounter.put(booking.getCustomer(), ticketCounter.get(booking.getCustomer()) + booking.getTickets().size());
+            }
+        }
+        int maxTicketCount = 0;
+        for (var ticketCount :ticketCounter.entrySet()) {
+            if (ticketCount.getValue() > maxTicketCount) {
+                maxTicketCount = ticketCount.getValue();
+            }
+        }
+
+        int finalMaxTicketCount = maxTicketCount;
+        return ticketCounter
+                .keySet()
+                .stream()
+                .filter(customer -> ticketCounter.get(customer) == finalMaxTicketCount)
+                .collect(Collectors.toSet());
     }
 
     public void confirmQuotes(List<Quote> quotes, String customer) {
         List<Ticket> tmpTickets = new ArrayList<>();
-        for(var quote: quotes) {
-            var ticket = webClientBuilder
-                    .baseUrl("https://reliabletheatrecompany.com/")
-                    .build()
-                    .put()
-                    .uri(uriBuilder -> uriBuilder
-                            .pathSegment("shows", quote.getShowId().toString(), "seats", quote.getSeatId().toString(), "ticket")
-                            .queryParam("key", Utils.API_KEY)
-                            .queryParam("customer", customer)
-                            .build())
-                    .retrieve()
-                    .bodyToMono(new ParameterizedTypeReference<Ticket>() {})
-                    .block();
+        boolean success = true;
+        try {
+            for(var quote: quotes) {
+                var ticket = webClientBuilder
+                        .baseUrl("https://reliabletheatrecompany.com/")
+                        .build()
+                        .put()
+                        .uri(uriBuilder -> uriBuilder
+                                .pathSegment("shows", quote.getShowId().toString(), "seats", quote.getSeatId().toString(), "ticket")
+                                .queryParam("key", Utils.API_KEY)
+                                .queryParam("customer", customer)
+                                .build())
+                        .retrieve()
+                        .bodyToMono(new ParameterizedTypeReference<Ticket>() {})
+                        .block();
 
-            tmpTickets.add(ticket);
+                tmpTickets.add(ticket);
+            }
+        } catch (Exception e) {
+            success = false;
         }
 
-//        TODO: ensure all or nothing by removing the tickets
-//        if (false) {
-//            for(var ticket: tmpTickets) {
-//                webClientBuilder
-//                        .baseUrl("https://reliabletheatrecompany.com/")
-//                        .build()
-//                        .put()
-//                        .uri(uriBuilder -> uriBuilder
-//                                .pathSegment("shows", ticket.getShowId().toString(), "seats", ticket.getSeatId().toString(), "ticket")
-//                                .queryParam("key", Utils.API_KEY)
-//                                .queryParam("customer", customer)
-//                                .build())
-//                        .retrieve().bodyToMono()
-//            }
-//        }
 
+//        TODO: ensure all or nothing by removing the tickets
+        if (!success) {
+            for (var ticket : tmpTickets) {
+                webClientBuilder
+                        .baseUrl("https://reliabletheatrecompany.com/")
+                        .build()
+                        .put()
+                        .uri(uriBuilder -> uriBuilder
+                                .pathSegment("shows", ticket.getShowId().toString(), "seats", ticket.getSeatId().toString(), "ticket")
+                                .queryParam("key", Utils.API_KEY)
+                                .queryParam("customer", customer)
+                                .build())
+                        .retrieve().bodyToMono(Void.class);
+            }
+        } else {
+            bookings.add(new Booking(
+               UUID.randomUUID(),
+               LocalDateTime.now(),
+               tmpTickets,
+               customer
+            ));
+        }
     }
 }

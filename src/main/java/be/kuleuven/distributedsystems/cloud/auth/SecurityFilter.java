@@ -40,16 +40,17 @@ public class SecurityFilter extends OncePerRequestFilter {
 
                 String header = new String(decoder.decode(kid.getHeader()));
                 String payload = new String(decoder.decode(kid.getPayload()));
-
+//                System.out.println(payload);
                 var user_json = Utils.json_mapper.readTree(payload);
                 var email = user_json.get("email").asText();
                 var user_id = user_json.get("user_id").asText();
+                var role = (user_json.has("role"))?user_json.get("role").asText(): "";
 
-                System.out.println(email);
-                System.out.println(user_id);
+//                System.out.println(email);
+//                System.out.println(user_id);
 
-                System.out.println("cookie exists");
-                var user = new User(email, "user", user_id);
+//                System.out.println("cookie exists");
+                var user = new User(email, role, user_id);
                 SecurityContext context = SecurityContextHolder.getContext();
                 context.setAuthentication(new FirebaseAuthentication(user));
 
@@ -58,7 +59,7 @@ public class SecurityFilter extends OncePerRequestFilter {
             }
 
         }
-        System.out.println("cookie not exists");
+//        System.out.println("cookie not exists");
         filterChain.doFilter(request, response);
     }
 
