@@ -21,25 +21,49 @@ public class Model {
 
     public List<Show> getShows() {
 //        TODO: browse to all of the companies and group the results
-        return webClientBuilder
-                .baseUrl("https://reliabletheatrecompany.com/")
-                .build()
-                .get()
-                .uri(uriBuilder -> uriBuilder
-                        .pathSegment("shows")
-                        .queryParam("key", Utils.API_KEY)
-                        .build())
-                .retrieve()
-                .bodyToMono(new ParameterizedTypeReference<CollectionModel<Show>>() {})
-                .block()
-                .getContent()
-                .stream().collect(Collectors.toList());
+        List<Show> allShows = new ArrayList<>();
+        try {
+            List<Show> reliable = webClientBuilder
+                    .baseUrl("https://reliabletheatrecompany.com/")
+                    .build()
+                    .get()
+                    .uri(uriBuilder -> uriBuilder
+                            .pathSegment("shows")
+                            .queryParam("key", Utils.API_KEY)
+                            .build())
+                    .retrieve()
+                    .bodyToMono(new ParameterizedTypeReference<CollectionModel<Show>>() {})
+                    .block()
+                    .getContent()
+                    .stream().collect(Collectors.toList());
+
+            List<Show> unreliable = webClientBuilder
+                    .baseUrl("https://unreliabletheatrecompany.com/")
+                    .build()
+                    .get()
+                    .uri(uriBuilder -> uriBuilder
+                            .pathSegment("shows")
+                            .queryParam("key", Utils.API_KEY)
+                            .build())
+                    .retrieve()
+                    .bodyToMono(new ParameterizedTypeReference<CollectionModel<Show>>() {})
+                    .block()
+                    .getContent()
+                    .stream().collect(Collectors.toList());
+
+            allShows.addAll(reliable);
+            allShows.addAll(unreliable);
+        } catch (Exception e) {
+            e.printStackTrace();
+        }
+
+        return allShows;
     }
 
     public Show getShow(String company, UUID showId) {
         // TODO: check company to use appropriate URL
         return webClientBuilder
-                .baseUrl("https://reliabletheatrecompany.com/")
+                .baseUrl("https://" + company)
                 .build()
                 .get()
                 .uri(uriBuilder -> uriBuilder
@@ -53,8 +77,9 @@ public class Model {
 
     public List<LocalDateTime> getShowTimes(String company, UUID showId) {
         // TODO: return a list with all possible times for the given show
+        System.out.println(company);
         var showTimesString =  webClientBuilder
-                .baseUrl("https://reliabletheatrecompany.com/")
+                .baseUrl("https://" + company)
                 .build()
                 .get()
                 .uri(uriBuilder -> uriBuilder
@@ -75,7 +100,7 @@ public class Model {
     public List<Seat> getAvailableSeats(String company, UUID showId, LocalDateTime time) {
 
         return webClientBuilder
-                .baseUrl("https://reliabletheatrecompany.com/")
+                .baseUrl("https://" + company)
                 .build()
                 .get()
                 .uri(uriBuilder -> uriBuilder
@@ -94,7 +119,7 @@ public class Model {
         // TODO: return the given seat
         System.out.println(seatId);
         return webClientBuilder
-                .baseUrl("https://reliabletheatrecompany.com/")
+                .baseUrl("https://" + company)
                 .build()
                 .get()
                 .uri(uriBuilder -> uriBuilder
@@ -108,7 +133,7 @@ public class Model {
 
     public Ticket getTicket(String company, UUID showId, UUID seatId) {
         return webClientBuilder
-                .baseUrl("https://reliabletheatrecompany.com/")
+                .baseUrl("https://" + company)
                 .build()
                 .get()
                 .uri(uriBuilder -> uriBuilder
@@ -162,7 +187,7 @@ public class Model {
         try {
             for(var quote: quotes) {
                 var ticket = webClientBuilder
-                        .baseUrl("https://reliabletheatrecompany.com/")
+                        .baseUrl("https://" + quote.getCompany())
                         .build()
                         .put()
                         .uri(uriBuilder -> uriBuilder
@@ -185,7 +210,7 @@ public class Model {
         if (!success) {
             for (var ticket : tmpTickets) {
                 webClientBuilder
-                        .baseUrl("https://reliabletheatrecompany.com/")
+                        .baseUrl("https://" + ticket.getCompany())
                         .build()
                         .put()
                         .uri(uriBuilder -> uriBuilder
