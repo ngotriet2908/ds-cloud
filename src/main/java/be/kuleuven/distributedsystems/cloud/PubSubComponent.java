@@ -6,18 +6,19 @@ import com.google.api.gax.grpc.GrpcTransportChannel;
 import com.google.api.gax.rpc.FixedTransportChannelProvider;
 import com.google.api.gax.rpc.TransportChannelProvider;
 import com.google.cloud.pubsub.v1.*;
-import com.google.pubsub.v1.*;
+import com.google.pubsub.v1.ProjectSubscriptionName;
+import com.google.pubsub.v1.PushConfig;
+import com.google.pubsub.v1.Subscription;
+import com.google.pubsub.v1.TopicName;
 import io.grpc.ManagedChannel;
 import io.grpc.ManagedChannelBuilder;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Autowired;
-import org.springframework.context.annotation.Bean;
 import org.springframework.core.env.Environment;
 import org.springframework.stereotype.Component;
 
 import javax.annotation.PostConstruct;
-import java.io.IOException;
 
 @Component
 public class PubSubComponent {
@@ -51,7 +52,7 @@ public class PubSubComponent {
                                     .build());
 
             TopicName topicName = TopicName.of(Utils.PROJECT_ID, Utils.TOPIC_ID);
-//            topicClient.deleteTopic(topicName);
+
             try {
                 topicClient.createTopic(topicName);
             } catch (Exception e) {
@@ -86,9 +87,7 @@ public class PubSubComponent {
             // Messages not successfully acknowledged within 10 seconds will get resent by the server.
             ProjectSubscriptionName subscriptionName =
                     ProjectSubscriptionName.of(Utils.PROJECT_ID, SUBSCRIPTION_ID);
-//            if (subscriptionAdminClient.getSubscription(subscriptionName) != null) {
-//                subscriptionAdminClient.deleteSubscription(subscriptionName);
-//            }
+
             try {
                 Subscription subscription =
                         subscriptionAdminClient.createSubscription(subscriptionName, publisher.getTopicName(), pushConfig, 10);
@@ -98,7 +97,6 @@ public class PubSubComponent {
             }
 
         } catch (Exception e) {
-//            e.printStackTrace();
             logger.error(e.getMessage());
         }
     }

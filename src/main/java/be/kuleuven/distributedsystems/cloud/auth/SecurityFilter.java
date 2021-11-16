@@ -3,8 +3,6 @@ package be.kuleuven.distributedsystems.cloud.auth;
 import be.kuleuven.distributedsystems.cloud.Utils;
 import be.kuleuven.distributedsystems.cloud.entities.User;
 import com.auth0.jwt.JWT;
-import com.auth0.jwt.algorithms.Algorithm;
-import com.auth0.jwt.interfaces.DecodedJWT;
 import org.springframework.security.core.Authentication;
 import org.springframework.security.core.GrantedAuthority;
 import org.springframework.security.core.authority.SimpleGrantedAuthority;
@@ -19,8 +17,10 @@ import javax.servlet.ServletException;
 import javax.servlet.http.HttpServletRequest;
 import javax.servlet.http.HttpServletResponse;
 import java.io.IOException;
-import java.security.PublicKey;
-import java.util.*;
+import java.util.ArrayList;
+import java.util.Base64;
+import java.util.Collection;
+import java.util.List;
 
 @Component
 public class SecurityFilter extends OncePerRequestFilter {
@@ -29,9 +29,6 @@ public class SecurityFilter extends OncePerRequestFilter {
     protected void doFilterInternal(HttpServletRequest request, HttpServletResponse response, FilterChain filterChain) throws ServletException, IOException {
         var session = WebUtils.getCookie(request, "session");
         if (session != null) {
-            // TODO: (level 1) decode Identity Token and assign correct email and role
-            // TODO: (level 2) verify Identity Token
-
             try {
                 var token = session.getValue();
                 var kid = JWT.decode(session.getValue());
@@ -40,16 +37,12 @@ public class SecurityFilter extends OncePerRequestFilter {
 
                 String header = new String(decoder.decode(kid.getHeader()));
                 String payload = new String(decoder.decode(kid.getPayload()));
-//                System.out.println(payload);
+
                 var user_json = Utils.json_mapper.readTree(payload);
                 var email = user_json.get("email").asText();
                 var user_id = user_json.get("user_id").asText();
                 var role = (user_json.has("role"))?user_json.get("role").asText(): "";
 
-//                System.out.println(email);
-//                System.out.println(user_id);
-
-//                System.out.println("cookie exists");
                 var user = new User(email, role, user_id);
                 SecurityContext context = SecurityContextHolder.getContext();
                 context.setAuthentication(new FirebaseAuthentication(user));
@@ -57,9 +50,7 @@ public class SecurityFilter extends OncePerRequestFilter {
             } catch (Exception e) {
                 e.printStackTrace();
             }
-
         }
-//        System.out.println("cookie not exists");
         filterChain.doFilter(request, response);
     }
 
@@ -106,9 +97,7 @@ public class SecurityFilter extends OncePerRequestFilter {
         }
 
         @Override
-        public void setAuthenticated(boolean b) throws IllegalArgumentException {
-
-        }
+        public void setAuthenticated(boolean b) throws IllegalArgumentException {}
 
         @Override
         public String getName() {

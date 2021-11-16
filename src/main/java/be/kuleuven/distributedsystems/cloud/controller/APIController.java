@@ -2,22 +2,17 @@ package be.kuleuven.distributedsystems.cloud.controller;
 
 import be.kuleuven.distributedsystems.cloud.Model;
 import be.kuleuven.distributedsystems.cloud.entities.Quote;
-import be.kuleuven.distributedsystems.cloud.entities.Seat;
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.http.*;
 import org.springframework.web.bind.annotation.*;
 
 import java.util.ArrayList;
 import java.util.List;
-import java.util.UUID;
 
 @RestController
 @RequestMapping("/api")
 public class APIController {
     private final Model model;
-    Logger logger = LoggerFactory.getLogger(APIController.class);
 
     @Autowired
     public APIController(Model model) {
@@ -65,9 +60,4 @@ public class APIController {
         return new ResponseEntity<>(headers, HttpStatus.FOUND);
     }
 
-    @PostMapping("/subscription")
-    public void subscription (@RequestBody String body) {
-        logger.info("Receive sub: " + body);
-//        model.confirmQuotesHelper();
-    }
 }

@@ -2,14 +2,8 @@ package be.kuleuven.distributedsystems.cloud;
 
 import be.kuleuven.distributedsystems.cloud.entities.*;
 import com.google.api.core.ApiFuture;
-import com.google.api.core.ApiFutureCallback;
-import com.google.api.core.ApiFutures;
-import com.google.api.gax.rpc.ApiException;
-import com.google.cloud.pubsub.v1.Publisher;
-import com.google.common.util.concurrent.MoreExecutors;
 import com.google.protobuf.ByteString;
 import com.google.pubsub.v1.PubsubMessage;
-import com.google.pubsub.v1.TopicName;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -19,14 +13,12 @@ import org.springframework.stereotype.Component;
 import org.springframework.web.reactive.function.client.WebClient;
 import reactor.util.retry.Retry;
 
-import javax.annotation.Resource;
 import java.io.ByteArrayOutputStream;
 import java.io.IOException;
 import java.io.ObjectOutputStream;
 import java.time.Duration;
 import java.time.LocalDateTime;
 import java.util.*;
-import java.util.concurrent.ExecutionException;
 import java.util.stream.Collectors;
 
 @Component
@@ -45,53 +37,36 @@ public class Model {
 
     Logger logger = LoggerFactory.getLogger(Model.class);
 
-//    @Resource(name = "getPublisher")
-//    private Publisher publisher;
-
     public List<Show> getShows() {
-//        TODO: browse to all of the companies and group the results
         List<Show> allShows = new ArrayList<>();
-        try {
-            List<Show> reliable = webClientBuilder
-                    .baseUrl("https://reliabletheatrecompany.com/")
-                    .build()
-                    .get()
-                    .uri(uriBuilder -> uriBuilder
-                            .pathSegment("shows")
-                            .queryParam("key", Utils.API_KEY)
-                            .build())
-                    .retrieve()
-                    .bodyToMono(new ParameterizedTypeReference<CollectionModel<Show>>() {})
-                    .block()
-                    .getContent()
-                    .stream().collect(Collectors.toList());
 
-            List<Show> unreliable = webClientBuilder
-                    .baseUrl("https://unreliabletheatrecompany.com/")
-                    .build()
-                    .get()
-                    .uri(uriBuilder -> uriBuilder
-                            .pathSegment("shows")
-                            .queryParam("key", Utils.API_KEY)
-                            .build())
-                    .retrieve()
-                    .bodyToMono(new ParameterizedTypeReference<CollectionModel<Show>>() {})
-                    .retryWhen(Retry.fixedDelay(MAX_ATTEMPTS, Duration.ofSeconds(DELAY_BETWEEN_ATTEMPTS)))
-                    .block()
-                    .getContent()
-                    .stream().collect(Collectors.toList());
+        for (String API_LOCATION :
+             Utils.API_LOCATIONS) {
+            try {
+                List<Show> showsForAPI = webClientBuilder
+                        .baseUrl("https://" + API_LOCATION + "/")
+                        .build()
+                        .get()
+                        .uri(uriBuilder -> uriBuilder
+                                .pathSegment("shows")
+                                .queryParam("key", Utils.API_KEY)
+                                .build())
+                        .retrieve()
+                        .bodyToMono(new ParameterizedTypeReference<CollectionModel<Show>>() {})
+                        .retryWhen(Retry.fixedDelay(MAX_ATTEMPTS, Duration.ofSeconds(DELAY_BETWEEN_ATTEMPTS)))
+                        .block()
+                        .getContent()
+                        .stream().collect(Collectors.toList());
 
-            allShows.addAll(reliable);
-            allShows.addAll(unreliable);
-        } catch (Exception e) {
-            e.printStackTrace();
+                allShows.addAll(showsForAPI);
+            } catch (Exception e) {
+                e.printStackTrace();
+            }
         }
-
         return allShows;
     }
 
     public Show getShow(String company, UUID showId) {
-        // TODO: check company to use appropriate URL
         return webClientBuilder
                 .baseUrl("https://" + company)
                 .build()
@@ -107,8 +82,6 @@ public class Model {
     }
 
     public List<LocalDateTime> getShowTimes(String company, UUID showId) {
-        // TODO: return a list with all possible times for the given show
-        System.out.println(company);
         var showTimesString =  webClientBuilder
                 .baseUrl("https://" + company)
                 .build()
@@ -126,11 +99,9 @@ public class Model {
         return showTimesString.stream()
                 .map(string -> LocalDateTime.parse(string, Utils.show_time_formatter))
                 .collect(Collectors.toList());
-
     }
 
     public List<Seat> getAvailableSeats(String company, UUID showId, LocalDateTime time) {
-
         return webClientBuilder
                 .baseUrl("https://" + company)
                 .build()
@@ -149,8 +120,6 @@ public class Model {
     }
 
     public Seat getSeat(String company, UUID showId, UUID seatId) {
-        // TODO: return the given seat
-        System.out.println(seatId);
         return webClientBuilder
                 .baseUrl("https://" + company)
                 .build()
@@ -181,7 +150,6 @@ public class Model {
     }
 
     public List<Booking> getBookings(String customer) {
-
         return bookings
                 .stream()
                 .filter(booking -> booking.getCustomer().equals(customer))
@@ -233,7 +201,7 @@ public class Model {
 
     public void confirmQuotesHelper(List<Quote> quotes, String customer) {
         List<Ticket> tmpTickets = new ArrayList<>();
-        boolean success = true;
+        boolean confirmedAllQuotes = true;
         try {
             for(var quote: quotes) {
                 var ticket = webClientBuilder
@@ -253,12 +221,10 @@ public class Model {
                 tmpTickets.add(ticket);
             }
         } catch (Exception e) {
-            success = false;
+            confirmedAllQuotes = false;
         }
 
-
-//        TODO: ensure all or nothing by removing the tickets
-        if (!success) {
+        if (!confirmedAllQuotes) {
             for (var ticket : tmpTickets) {
                 webClientBuilder
                         .baseUrl("https://" + ticket.getCompany())
