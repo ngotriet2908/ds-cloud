@@ -20,6 +20,9 @@ import org.springframework.web.reactive.function.client.WebClient;
 import reactor.util.retry.Retry;
 
 import javax.annotation.Resource;
+import java.io.ByteArrayOutputStream;
+import java.io.IOException;
+import java.io.ObjectOutputStream;
 import java.time.Duration;
 import java.time.LocalDateTime;
 import java.util.*;
@@ -213,44 +216,20 @@ public class Model {
                 .collect(Collectors.toSet());
     }
 
-    public void confirmQuotes(List<Quote> quotes, String customer) {
+    public void confirmQuotes(List<Quote> quotes, String customer) throws IOException {
+        ByteArrayOutputStream byteArrayOutputStream = new ByteArrayOutputStream();
+        ObjectOutputStream out = new ObjectOutputStream(byteArrayOutputStream);
+        out.writeObject(quotes);
+        out.close();
+        byteArrayOutputStream.close();
+
+
         PubsubMessage pubsubMessage = PubsubMessage.newBuilder()
-//                    .setData(ByteString.copyFromUtf8(quotes.toString()))
-                .setData(ByteString.copyFromUtf8("hahaha"))
+                .setData(ByteString.copyFrom(byteArrayOutputStream.toByteArray()))
                 .putAttributes("customer", customer)
                 .build();
-        logger.info("Published via " + this.pubSubComponent.getPublisher().getTopicNameString() + ": " + pubsubMessage);
+        logger.info("Publishing via " + this.pubSubComponent.getPublisher().getTopicNameString());
         ApiFuture<String> future = this.pubSubComponent.getPublisher().publish(pubsubMessage);
-        ApiFutures.addCallback(
-                future,
-                new ApiFutureCallback<String>() {
-
-                    @Override
-                    public void onFailure(Throwable throwable) {
-                        if (throwable instanceof ApiException) {
-                            ApiException apiException = ((ApiException) throwable);
-                            // details on the API exception
-                            logger.error(String.valueOf(apiException.getStatusCode().getCode()));
-                            logger.error(String.valueOf(apiException.isRetryable()));
-                        }
-                        throwable.printStackTrace();
-                        logger.error("Error publishing message : " + throwable.getMessage());
-                    }
-
-                    @Override
-                    public void onSuccess(String messageId) {
-                        // Once published, returns server-assigned message ids (unique within the topic)
-                        logger.info("Published message ID: " + messageId);
-                    }
-                },
-                MoreExecutors.directExecutor());
-        try {
-            future.get();
-        } catch (InterruptedException e) {
-            e.printStackTrace();
-        } catch (ExecutionException e) {
-            e.printStackTrace();
-        }
     }
 
     public void confirmQuotesHelper(List<Quote> quotes, String customer) {

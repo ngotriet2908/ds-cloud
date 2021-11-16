@@ -57,4 +57,13 @@ public class Quote implements Serializable {
     public int hashCode() {
         return this.company.hashCode() * this.showId.hashCode() * this.seatId.hashCode();
     }
+
+    @Override
+    public String toString() {
+        return "Quote{" +
+                "company='" + company + '\'' +
+                ", showId=" + showId +
+                ", seatId=" + seatId +
+                '}';
+    }
 }

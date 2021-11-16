@@ -5,6 +5,8 @@ import be.kuleuven.distributedsystems.cloud.entities.Quote;
 import be.kuleuven.distributedsystems.cloud.entities.Seat;
 import be.kuleuven.distributedsystems.cloud.entities.Show;
 import be.kuleuven.distributedsystems.cloud.entities.Ticket;
+import com.google.gson.JsonObject;
+import com.google.gson.JsonParser;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -12,6 +14,10 @@ import org.springframework.format.annotation.DateTimeFormat;
 import org.springframework.web.bind.annotation.*;
 import org.springframework.web.servlet.ModelAndView;
 
+import java.io.ByteArrayInputStream;
+import java.io.IOException;
+import java.io.ObjectInputStream;
+import java.nio.charset.StandardCharsets;
 import java.time.LocalDateTime;
 import java.time.format.DateTimeFormatter;
 import java.util.*;
@@ -32,9 +38,25 @@ public class ViewController {
     }
 
     @PostMapping("/confirm-quote")
-    public void subscription (@RequestBody String body) {
+    public void subscription (@RequestBody String body) throws IOException, ClassNotFoundException {
         logger.info("Receive sub: " + body);
-//        model.confirmQuotesHelper();
+        JsonObject jsonObject = JsonParser.parseString(body).getAsJsonObject();
+
+        String customer = jsonObject
+                .get("message").getAsJsonObject()
+                .get("attributes").getAsJsonObject()
+                .get("customer").getAsString();
+
+        String data = jsonObject
+                .get("message").getAsJsonObject()
+                .get("data").getAsString();
+        ByteArrayInputStream inputStream = new ByteArrayInputStream(Base64.getDecoder().decode(data.getBytes(StandardCharsets.UTF_8)));
+        ObjectInputStream in = new ObjectInputStream(inputStream);
+
+
+        List<Quote> quotes = (List<Quote>) in.readObject();
+        model.confirmQuotesHelper(quotes, customer);
+        logger.info("Processed Order of : " + customer + " : " + quotes );
     }
 
     @GetMapping({"/", "/shows"})
