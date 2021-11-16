@@ -60,6 +60,17 @@ public class PubSubComponent {
 
             logger.info("created topic " + topicClient.getTopic(topicName).getName());
 
+            // Set the channel and credentials provider when creating a `Publisher`.
+            // Similarly for Subscriber
+            this.publisher =
+                    Publisher.newBuilder(topicName)
+                            .setChannelProvider(channelProvider)
+                            .setCredentialsProvider(credentialsProvider)
+                            .build();
+
+            logger.info("created publisher " + publisher.getTopicNameString());
+
+
             SubscriptionAdminClient subscriptionAdminClient = SubscriptionAdminClient
                     .create(
                             SubscriptionAdminSettings.newBuilder()
@@ -71,20 +82,19 @@ public class PubSubComponent {
                     .setPushEndpoint(PubSubComponent.PUSH_ENDPOINT)
                     .build();
 
+            // Create a push subscription with default acknowledgement deadline of 10 seconds.
+            // Messages not successfully acknowledged within 10 seconds will get resent by the server.
             ProjectSubscriptionName subscriptionName =
                     ProjectSubscriptionName.of(Utils.PROJECT_ID, SUBSCRIPTION_ID);
-
+//            if (subscriptionAdminClient.getSubscription(subscriptionName) != null) {
+//                subscriptionAdminClient.deleteSubscription(subscriptionName);
+//            }
             try {
                 Subscription subscription =
-                        subscriptionAdminClient.createSubscription(
-                                subscriptionName,
-                                topicName,
-                                pushConfig,
-                                60);
+                        subscriptionAdminClient.createSubscription(subscriptionName, publisher.getTopicName(), pushConfig, 10);
                 logger.info("Created push subscription: " + subscription.getName());
             } catch (Exception e) {
                 logger.error(e.getMessage());
-//                e.printStackTrace();
             }
 
         } catch (Exception e) {
@@ -93,17 +103,7 @@ public class PubSubComponent {
         }
     }
 
-    public Publisher getPublisher() throws IOException {
-        String hostport = "localhost:8083";
-        ManagedChannel channel = ManagedChannelBuilder.forTarget(hostport).usePlaintext().build();
-        TransportChannelProvider channelProvider =
-                FixedTransportChannelProvider.create(GrpcTransportChannel.create(channel));
-        CredentialsProvider credentialsProvider = NoCredentialsProvider.create();
-//        logger.info("created publisher " + publisher.getTopicNameString());
-        return Publisher.newBuilder(TopicName.of(Utils.PROJECT_ID, Utils.TOPIC_ID))
-                        .setChannelProvider(channelProvider)
-                        .setCredentialsProvider(credentialsProvider)
-                        .build();
-
+    public Publisher getPublisher() {
+        return publisher;
     }
 }

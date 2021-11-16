@@ -223,7 +223,6 @@ public class Model {
         out.close();
         byteArrayOutputStream.close();
 
-
         PubsubMessage pubsubMessage = PubsubMessage.newBuilder()
                 .setData(ByteString.copyFrom(byteArrayOutputStream.toByteArray()))
                 .putAttributes("customer", customer)
