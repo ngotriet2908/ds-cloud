@@ -7,9 +7,6 @@ import be.kuleuven.distributedsystems.cloud.entities.Show;
 import be.kuleuven.distributedsystems.cloud.entities.Ticket;
 import com.google.gson.JsonObject;
 import com.google.gson.JsonParser;
-import com.google.protobuf.ByteString;
-import net.minidev.json.JSONObject;
-import net.minidev.json.parser.JSONParser;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -18,7 +15,6 @@ import org.springframework.web.bind.annotation.*;
 import org.springframework.web.servlet.ModelAndView;
 
 import java.io.ByteArrayInputStream;
-import java.io.ByteArrayOutputStream;
 import java.io.IOException;
 import java.io.ObjectInputStream;
 import java.nio.charset.StandardCharsets;

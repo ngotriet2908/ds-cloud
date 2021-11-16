@@ -90,8 +90,6 @@ public class PubSubComponent {
         } catch (Exception e) {
 //            e.printStackTrace();
             logger.error(e.getMessage());
-        } finally {
-            channel.shutdown();
         }
     }
 

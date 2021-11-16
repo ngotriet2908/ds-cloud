@@ -216,36 +216,20 @@ public class Model {
                 .collect(Collectors.toSet());
     }
 
-    public void confirmQuotes(List<Quote> quotes, String customer) throws ExecutionException, InterruptedException, IOException {
-        ApiFuture<String> future = null;
-        Publisher publisher = null;
+    public void confirmQuotes(List<Quote> quotes, String customer) throws IOException {
         ByteArrayOutputStream byteArrayOutputStream = new ByteArrayOutputStream();
         ObjectOutputStream out = new ObjectOutputStream(byteArrayOutputStream);
-
-        // Method for serialization of object
         out.writeObject(quotes);
         out.close();
         byteArrayOutputStream.close();
 
-        try {
-            publisher = this.pubSubComponent.getPublisher();
-           PubsubMessage pubsubMessage = PubsubMessage.newBuilder()
-                   .setData(ByteString.copyFrom(byteArrayOutputStream.toByteArray()))
-                   .putAttributes("customer", customer)
-                   .build();
-           logger.info("Publishing via " + this.pubSubComponent.getPublisher().getTopicNameString());
-           future = this.pubSubComponent.getPublisher().publish(pubsubMessage);
-       } catch (Exception e) {
-           e.printStackTrace();
-       } finally {
-            future.get();    //This resolves this issue.
-            // Wait on any pending requests
-            if (publisher != null) {
-                publisher.shutdown();
-                //publisher.awaitTermination(1, TimeUnit.SECONDS);
-            }
-        }
 
+        PubsubMessage pubsubMessage = PubsubMessage.newBuilder()
+                .setData(ByteString.copyFrom(byteArrayOutputStream.toByteArray()))
+                .putAttributes("customer", customer)
+                .build();
+        logger.info("Publishing via " + this.pubSubComponent.getPublisher().getTopicNameString());
+        ApiFuture<String> future = this.pubSubComponent.getPublisher().publish(pubsubMessage);
     }
 
     public void confirmQuotesHelper(List<Quote> quotes, String customer) {
