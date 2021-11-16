@@ -5,12 +5,11 @@ import be.kuleuven.distributedsystems.cloud.entities.Quote;
 import be.kuleuven.distributedsystems.cloud.entities.Seat;
 import be.kuleuven.distributedsystems.cloud.entities.Show;
 import be.kuleuven.distributedsystems.cloud.entities.Ticket;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.format.annotation.DateTimeFormat;
-import org.springframework.web.bind.annotation.CookieValue;
-import org.springframework.web.bind.annotation.GetMapping;
-import org.springframework.web.bind.annotation.PathVariable;
-import org.springframework.web.bind.annotation.RestController;
+import org.springframework.web.bind.annotation.*;
 import org.springframework.web.servlet.ModelAndView;
 
 import java.time.LocalDateTime;
@@ -21,6 +20,7 @@ import java.util.stream.Collectors;
 @RestController
 public class ViewController {
     private final Model model;
+    Logger logger = LoggerFactory.getLogger(ViewController.class);
 
     @Autowired
     public ViewController(Model model) {
@@ -29,6 +29,12 @@ public class ViewController {
 
     @GetMapping("/_ah/warmup")
     public void warmup() {
+    }
+
+    @PostMapping("/confirm-quote")
+    public void subscription (@RequestBody String body) {
+        logger.info("Receive sub: " + body);
+//        model.confirmQuotesHelper();
     }
 
     @GetMapping({"/", "/shows"})

@@ -1,6 +1,17 @@
 package be.kuleuven.distributedsystems.cloud;
 
 import be.kuleuven.distributedsystems.cloud.entities.*;
+import com.google.api.core.ApiFuture;
+import com.google.api.core.ApiFutureCallback;
+import com.google.api.core.ApiFutures;
+import com.google.api.gax.rpc.ApiException;
+import com.google.cloud.pubsub.v1.Publisher;
+import com.google.common.util.concurrent.MoreExecutors;
+import com.google.protobuf.ByteString;
+import com.google.pubsub.v1.PubsubMessage;
+import com.google.pubsub.v1.TopicName;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.core.ParameterizedTypeReference;
 import org.springframework.hateoas.CollectionModel;
@@ -8,9 +19,11 @@ import org.springframework.stereotype.Component;
 import org.springframework.web.reactive.function.client.WebClient;
 import reactor.util.retry.Retry;
 
+import javax.annotation.Resource;
 import java.time.Duration;
 import java.time.LocalDateTime;
 import java.util.*;
+import java.util.concurrent.ExecutionException;
 import java.util.stream.Collectors;
 
 @Component
@@ -19,10 +32,18 @@ public class Model {
     @Autowired
     private WebClient.Builder webClientBuilder;
 
+    @Autowired
+    private PubSubComponent pubSubComponent;
+
     private List<Booking> bookings = new ArrayList<>();
 
     private static final int MAX_ATTEMPTS = 10;
     private static final int DELAY_BETWEEN_ATTEMPTS = 2;
+
+    Logger logger = LoggerFactory.getLogger(Model.class);
+
+//    @Resource(name = "getPublisher")
+//    private Publisher publisher;
 
     public List<Show> getShows() {
 //        TODO: browse to all of the companies and group the results
@@ -193,6 +214,46 @@ public class Model {
     }
 
     public void confirmQuotes(List<Quote> quotes, String customer) {
+        PubsubMessage pubsubMessage = PubsubMessage.newBuilder()
+//                    .setData(ByteString.copyFromUtf8(quotes.toString()))
+                .setData(ByteString.copyFromUtf8("hahaha"))
+                .putAttributes("customer", customer)
+                .build();
+        logger.info("Published via " + this.pubSubComponent.getPublisher().getTopicNameString() + ": " + pubsubMessage);
+        ApiFuture<String> future = this.pubSubComponent.getPublisher().publish(pubsubMessage);
+        ApiFutures.addCallback(
+                future,
+                new ApiFutureCallback<String>() {
+
+                    @Override
+                    public void onFailure(Throwable throwable) {
+                        if (throwable instanceof ApiException) {
+                            ApiException apiException = ((ApiException) throwable);
+                            // details on the API exception
+                            logger.error(String.valueOf(apiException.getStatusCode().getCode()));
+                            logger.error(String.valueOf(apiException.isRetryable()));
+                        }
+                        throwable.printStackTrace();
+                        logger.error("Error publishing message : " + throwable.getMessage());
+                    }
+
+                    @Override
+                    public void onSuccess(String messageId) {
+                        // Once published, returns server-assigned message ids (unique within the topic)
+                        logger.info("Published message ID: " + messageId);
+                    }
+                },
+                MoreExecutors.directExecutor());
+        try {
+            future.get();
+        } catch (InterruptedException e) {
+            e.printStackTrace();
+        } catch (ExecutionException e) {
+            e.printStackTrace();
+        }
+    }
+
+    public void confirmQuotesHelper(List<Quote> quotes, String customer) {
         List<Ticket> tmpTickets = new ArrayList<>();
         boolean success = true;
         try {
@@ -236,10 +297,10 @@ public class Model {
             }
         } else {
             bookings.add(new Booking(
-               UUID.randomUUID(),
-               LocalDateTime.now(),
-               tmpTickets,
-               customer
+                    UUID.randomUUID(),
+                    LocalDateTime.now(),
+                    tmpTickets,
+                    customer
             ));
         }
     }
