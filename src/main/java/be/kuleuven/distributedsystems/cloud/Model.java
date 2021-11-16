@@ -20,6 +20,9 @@ import org.springframework.web.reactive.function.client.WebClient;
 import reactor.util.retry.Retry;
 
 import javax.annotation.Resource;
+import java.io.ByteArrayOutputStream;
+import java.io.IOException;
+import java.io.ObjectOutputStream;
 import java.time.Duration;
 import java.time.LocalDateTime;
 import java.util.*;
@@ -213,44 +216,36 @@ public class Model {
                 .collect(Collectors.toSet());
     }
 
-    public void confirmQuotes(List<Quote> quotes, String customer) {
-        PubsubMessage pubsubMessage = PubsubMessage.newBuilder()
-//                    .setData(ByteString.copyFromUtf8(quotes.toString()))
-                .setData(ByteString.copyFromUtf8("hahaha"))
-                .putAttributes("customer", customer)
-                .build();
-        logger.info("Published via " + this.pubSubComponent.getPublisher().getTopicNameString() + ": " + pubsubMessage);
-        ApiFuture<String> future = this.pubSubComponent.getPublisher().publish(pubsubMessage);
-        ApiFutures.addCallback(
-                future,
-                new ApiFutureCallback<String>() {
+    public void confirmQuotes(List<Quote> quotes, String customer) throws ExecutionException, InterruptedException, IOException {
+        ApiFuture<String> future = null;
+        Publisher publisher = null;
+        ByteArrayOutputStream byteArrayOutputStream = new ByteArrayOutputStream();
+        ObjectOutputStream out = new ObjectOutputStream(byteArrayOutputStream);
 
-                    @Override
-                    public void onFailure(Throwable throwable) {
-                        if (throwable instanceof ApiException) {
-                            ApiException apiException = ((ApiException) throwable);
-                            // details on the API exception
-                            logger.error(String.valueOf(apiException.getStatusCode().getCode()));
-                            logger.error(String.valueOf(apiException.isRetryable()));
-                        }
-                        throwable.printStackTrace();
-                        logger.error("Error publishing message : " + throwable.getMessage());
-                    }
+        // Method for serialization of object
+        out.writeObject(quotes);
+        out.close();
+        byteArrayOutputStream.close();
 
-                    @Override
-                    public void onSuccess(String messageId) {
-                        // Once published, returns server-assigned message ids (unique within the topic)
-                        logger.info("Published message ID: " + messageId);
-                    }
-                },
-                MoreExecutors.directExecutor());
         try {
-            future.get();
-        } catch (InterruptedException e) {
-            e.printStackTrace();
-        } catch (ExecutionException e) {
-            e.printStackTrace();
+            publisher = this.pubSubComponent.getPublisher();
+           PubsubMessage pubsubMessage = PubsubMessage.newBuilder()
+                   .setData(ByteString.copyFrom(byteArrayOutputStream.toByteArray()))
+                   .putAttributes("customer", customer)
+                   .build();
+           logger.info("Publishing via " + this.pubSubComponent.getPublisher().getTopicNameString());
+           future = this.pubSubComponent.getPublisher().publish(pubsubMessage);
+       } catch (Exception e) {
+           e.printStackTrace();
+       } finally {
+            future.get();    //This resolves this issue.
+            // Wait on any pending requests
+            if (publisher != null) {
+                publisher.shutdown();
+                //publisher.awaitTermination(1, TimeUnit.SECONDS);
+            }
         }
+
     }
 
     public void confirmQuotesHelper(List<Quote> quotes, String customer) {
