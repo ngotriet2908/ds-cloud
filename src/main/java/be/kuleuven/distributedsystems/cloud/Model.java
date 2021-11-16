@@ -6,7 +6,9 @@ import org.springframework.core.ParameterizedTypeReference;
 import org.springframework.hateoas.CollectionModel;
 import org.springframework.stereotype.Component;
 import org.springframework.web.reactive.function.client.WebClient;
+import reactor.util.retry.Retry;
 
+import java.time.Duration;
 import java.time.LocalDateTime;
 import java.util.*;
 import java.util.stream.Collectors;
@@ -18,6 +20,9 @@ public class Model {
     private WebClient.Builder webClientBuilder;
 
     private List<Booking> bookings = new ArrayList<>();
+
+    private static final int MAX_ATTEMPTS = 10;
+    private static final int DELAY_BETWEEN_ATTEMPTS = 2;
 
     public List<Show> getShows() {
 //        TODO: browse to all of the companies and group the results
@@ -47,6 +52,7 @@ public class Model {
                             .build())
                     .retrieve()
                     .bodyToMono(new ParameterizedTypeReference<CollectionModel<Show>>() {})
+                    .retryWhen(Retry.fixedDelay(MAX_ATTEMPTS, Duration.ofSeconds(DELAY_BETWEEN_ATTEMPTS)))
                     .block()
                     .getContent()
                     .stream().collect(Collectors.toList());
@@ -72,6 +78,7 @@ public class Model {
                         .build())
                 .retrieve()
                 .bodyToMono(new ParameterizedTypeReference<Show>() {})
+                .retryWhen(Retry.fixedDelay(MAX_ATTEMPTS, Duration.ofSeconds(DELAY_BETWEEN_ATTEMPTS)))
                 .block();
     }
 
@@ -88,6 +95,7 @@ public class Model {
                         .build())
                 .retrieve()
                 .bodyToMono(new ParameterizedTypeReference<CollectionModel<String>>() {})
+                .retryWhen(Retry.fixedDelay(MAX_ATTEMPTS, Duration.ofSeconds(DELAY_BETWEEN_ATTEMPTS)))
                 .block()
                 .getContent();
 
@@ -111,6 +119,7 @@ public class Model {
                         .build())
                 .retrieve()
                 .bodyToMono(new ParameterizedTypeReference<CollectionModel<Seat>>() {})
+                .retryWhen(Retry.fixedDelay(MAX_ATTEMPTS, Duration.ofSeconds(DELAY_BETWEEN_ATTEMPTS)))
                 .block()
                 .getContent().stream().collect(Collectors.toList());
     }
@@ -128,6 +137,7 @@ public class Model {
                         .build())
                 .retrieve()
                 .bodyToMono(new ParameterizedTypeReference<Seat>() {})
+                .retryWhen(Retry.fixedDelay(MAX_ATTEMPTS, Duration.ofSeconds(DELAY_BETWEEN_ATTEMPTS)))
                 .block();
     }
 
@@ -142,6 +152,7 @@ public class Model {
                         .build())
                 .retrieve()
                 .bodyToMono(new ParameterizedTypeReference<Ticket>() {})
+                .retryWhen(Retry.fixedDelay(MAX_ATTEMPTS, Duration.ofSeconds(DELAY_BETWEEN_ATTEMPTS)))
                 .block();
     }
 
@@ -197,6 +208,7 @@ public class Model {
                                 .build())
                         .retrieve()
                         .bodyToMono(new ParameterizedTypeReference<Ticket>() {})
+                        .retryWhen(Retry.fixedDelay(MAX_ATTEMPTS, Duration.ofSeconds(DELAY_BETWEEN_ATTEMPTS)))
                         .block();
 
                 tmpTickets.add(ticket);
@@ -218,7 +230,9 @@ public class Model {
                                 .queryParam("key", Utils.API_KEY)
                                 .queryParam("customer", customer)
                                 .build())
-                        .retrieve().bodyToMono(Void.class);
+                        .retrieve()
+                        .bodyToMono(Void.class)
+                        .retryWhen(Retry.fixedDelay(MAX_ATTEMPTS, Duration.ofSeconds(DELAY_BETWEEN_ATTEMPTS)));
             }
         } else {
             bookings.add(new Booking(
