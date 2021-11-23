@@ -3,6 +3,7 @@ package be.kuleuven.distributedsystems.cloud.auth;
 import be.kuleuven.distributedsystems.cloud.Utils;
 import be.kuleuven.distributedsystems.cloud.entities.User;
 import com.auth0.jwt.JWT;
+import com.fasterxml.jackson.databind.node.ArrayNode;
 import org.springframework.security.core.Authentication;
 import org.springframework.security.core.GrantedAuthority;
 import org.springframework.security.core.authority.SimpleGrantedAuthority;
@@ -41,13 +42,27 @@ public class SecurityFilter extends OncePerRequestFilter {
                 var user_json = Utils.json_mapper.readTree(payload);
                 var email = user_json.get("email").asText();
                 var user_id = user_json.get("user_id").asText();
-                var role = (user_json.has("role"))?user_json.get("role").asText(): "";
+                var roles = (user_json.has("roles"))?user_json.get("roles"): null;
+
+                var role = "";
+
+                if (roles != null && roles.isArray()) {
+                    var rolesArray = (ArrayNode) roles;
+                    for (var jsonNode : rolesArray) {
+                        role = jsonNode.asText();
+                        logger.info("role: " + role);
+                        if (role.equals("manager")) {
+                            break;
+                        }
+                    }
+                }
 
                 var user = new User(email, role, user_id);
                 SecurityContext context = SecurityContextHolder.getContext();
                 context.setAuthentication(new FirebaseAuthentication(user));
 
             } catch (Exception e) {
+                logger.error(e.getMessage());
                 e.printStackTrace();
             }
         }
