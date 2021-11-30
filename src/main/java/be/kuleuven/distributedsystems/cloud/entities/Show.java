@@ -11,6 +11,14 @@ public class Show {
 
     public Show() {}
 
+    public Show(FireStoreShow show) {
+        this.company = show.getCompany();
+        this.showId = UUID.fromString(show.getShowId());
+        this.name = show.getName();
+        this.location = show.getLocation();
+        this.image = show.getImage();
+    }
+
     public Show(String company, UUID showId, String name, String location, String image) {
         this.company = company;
         this.showId = showId;

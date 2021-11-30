@@ -1,5 +1,7 @@
 package be.kuleuven.distributedsystems.cloud.entities;
 
+import be.kuleuven.distributedsystems.cloud.Utils;
+
 import java.time.LocalDateTime;
 import java.util.UUID;
 
@@ -13,6 +15,16 @@ public class Seat {
     private double price;
 
     public Seat() {
+    }
+
+    public Seat(FireStoreSeat seat) {
+        this.company = seat.getCompany();
+        this.showId = UUID.fromString(seat.getShowId());
+        this.seatId = UUID.fromString(seat.getSeatId());
+        this.time = LocalDateTime.parse(seat.getTime(), Utils.show_time_formatter);
+        this.type = seat.getType();
+        this.name = seat.getName();
+        this.price = seat.getPrice();
     }
 
     public Seat(String company, UUID showId, UUID seatId, LocalDateTime time, String type, String name, double price) {
