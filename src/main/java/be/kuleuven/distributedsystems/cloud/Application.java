@@ -60,7 +60,7 @@ public class Application {
 
     @Bean
     public String projectId() {
-        return "demo-distributed-systems-kul";
+        return "ds-2-cloud";
     }
 
     /*
@@ -82,16 +82,36 @@ public class Application {
 
     @Bean
     public Firestore firestoreDB() {
-        String hostport = "localhost:8084";
+        if (isProduction()){
+            try {
+                GoogleCredentials credentials = GoogleCredentials.getApplicationDefault();
+                return FirestoreOptions
+                        .getDefaultInstance()
+                        .toBuilder()
+                        .setCredentials(credentials)
+                        .setProjectId(Utils.PROJECT_ID)
+                        .build()
+                        .getService();
+            }
+            catch (Exception e) {
+                return null;
+            }
 
-        return FirestoreOptions
-                .getDefaultInstance()
-                .toBuilder()
-                .setProjectId(this.projectId())
-                .setHost(hostport)
-                .setCredentials(new FirestoreOptions.EmulatorCredentials())
-                .setCredentialsProvider(FixedCredentialsProvider.create(new FirestoreOptions.EmulatorCredentials()))
-                .build()
-                .getService();
-    }
+        }
+        else {
+            String hostport = "localhost:8084";
+            return FirestoreOptions
+                    .getDefaultInstance()
+                    .toBuilder()
+                    .setProjectId(this.projectId())
+                    .setHost(hostport)
+                    .setCredentials(new FirestoreOptions.EmulatorCredentials())
+                    .setCredentialsProvider(FixedCredentialsProvider.create(new FirestoreOptions.EmulatorCredentials()))
+                    .build()
+                    .getService();
+        }
+
+
+
+     }
 }
