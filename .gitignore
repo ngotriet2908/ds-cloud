@@ -6,3 +6,7 @@
 /.idea/runConfigurations.xml
 /.idea/vcs.xml
 /.idea/workspace.xml
+/firebase-debug.log
+/firestore-debug.log
+/pubsub-debug.log
+/ui-debug.log

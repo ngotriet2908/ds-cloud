@@ -12,6 +12,14 @@ public class Ticket {
     public Ticket() {
     }
 
+    public Ticket(FireStoreTicket ticket) {
+        this.company = ticket.getCompany();
+        this.showId = UUID.fromString(ticket.getShowId());
+        this.seatId = UUID.fromString(ticket.getSeatId());
+        this.ticketId = UUID.fromString(ticket.getTicketId());
+        this.customer = ticket.getCustomer();
+    }
+
     public Ticket(String company, UUID showId, UUID seatId, UUID ticketId, String customer) {
         this.company = company;
         this.showId = showId;

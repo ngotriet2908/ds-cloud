@@ -2,8 +2,10 @@ package be.kuleuven.distributedsystems.cloud;
 
 import be.kuleuven.distributedsystems.cloud.entities.*;
 import com.google.api.core.ApiFuture;
+import com.google.cloud.firestore.*;
 import com.google.protobuf.ByteString;
 import com.google.pubsub.v1.PubsubMessage;
+import org.checkerframework.checker.units.qual.A;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -19,6 +21,7 @@ import java.io.ObjectOutputStream;
 import java.time.Duration;
 import java.time.LocalDateTime;
 import java.util.*;
+import java.util.concurrent.ExecutionException;
 import java.util.stream.Collectors;
 
 @Component
@@ -30,10 +33,16 @@ public class Model {
     @Autowired
     private PubSubComponent pubSubComponent;
 
-    private List<Booking> bookings = new ArrayList<>();
+    @Autowired
+    private InternalCompanyComponent internalCompany;
+
+    @Autowired
+    private Firestore firestoreDB;
 
     private static final int MAX_ATTEMPTS = 10;
     private static final int DELAY_BETWEEN_ATTEMPTS = 2;
+
+    private static final String BOOKINGS = "Bookings";
 
     Logger logger = LoggerFactory.getLogger(Model.class);
 
@@ -63,10 +72,16 @@ public class Model {
                 e.printStackTrace();
             }
         }
+
+        allShows.addAll(internalCompany.getShows());
         return allShows;
     }
 
     public Show getShow(String company, UUID showId) {
+        if (company.equals(Utils.INTERNAL_COMPANY_NAME)) {
+            return internalCompany.getShow(showId);
+        }
+
         return webClientBuilder
                 .baseUrl("https://" + company)
                 .build()
@@ -82,6 +97,10 @@ public class Model {
     }
 
     public List<LocalDateTime> getShowTimes(String company, UUID showId) {
+        if (company.equals(Utils.INTERNAL_COMPANY_NAME)) {
+            return internalCompany.getShowTimes(showId);
+        }
+
         var showTimesString =  webClientBuilder
                 .baseUrl("https://" + company)
                 .build()
@@ -102,6 +121,10 @@ public class Model {
     }
 
     public List<Seat> getAvailableSeats(String company, UUID showId, LocalDateTime time) {
+        if (company.equals(Utils.INTERNAL_COMPANY_NAME)) {
+            return internalCompany.getAvailableSeats(showId, time);
+        }
+
         return webClientBuilder
                 .baseUrl("https://" + company)
                 .build()
@@ -120,6 +143,10 @@ public class Model {
     }
 
     public Seat getSeat(String company, UUID showId, UUID seatId) {
+        if (company.equals(Utils.INTERNAL_COMPANY_NAME)) {
+            return internalCompany.getSeat(seatId);
+        }
+
         return webClientBuilder
                 .baseUrl("https://" + company)
                 .build()
@@ -134,35 +161,55 @@ public class Model {
                 .block();
     }
 
-    public Ticket getTicket(String company, UUID showId, UUID seatId) {
-        return webClientBuilder
-                .baseUrl("https://" + company)
-                .build()
-                .get()
-                .uri(uriBuilder -> uriBuilder
-                        .pathSegment("shows", showId.toString(), "seats", seatId.toString(), "ticket")
-                        .queryParam("key", Utils.API_KEY)
-                        .build())
-                .retrieve()
-                .bodyToMono(new ParameterizedTypeReference<Ticket>() {})
-                .retryWhen(Retry.fixedDelay(MAX_ATTEMPTS, Duration.ofSeconds(DELAY_BETWEEN_ATTEMPTS)))
-                .block();
-    }
+//    public Ticket getTicket(String company, UUID showId, UUID seatId) {
+//        return webClientBuilder
+//                .baseUrl("https://" + company)
+//                .build()
+//                .get()
+//                .uri(uriBuilder -> uriBuilder
+//                        .pathSegment("shows", showId.toString(), "seats", seatId.toString(), "ticket")
+//                        .queryParam("key", Utils.API_KEY)
+//                        .build())
+//                .retrieve()
+//                .bodyToMono(new ParameterizedTypeReference<Ticket>() {})
+//                .retryWhen(Retry.fixedDelay(MAX_ATTEMPTS, Duration.ofSeconds(DELAY_BETWEEN_ATTEMPTS)))
+//                .block();
+//    }
+
 
     public List<Booking> getBookings(String customer) {
-        return bookings
-                .stream()
-                .filter(booking -> booking.getCustomer().equals(customer))
-                .collect(Collectors.toList());
+        try {
+            List<Booking> bookings = new ArrayList<>();
+            Query query = firestoreDB.collection(BOOKINGS).whereEqualTo("customer", customer);
+            ApiFuture<QuerySnapshot> querySnapshot = query.get();
+            for (DocumentSnapshot document : querySnapshot.get().getDocuments()) {
+                bookings.add(new Booking(document.toObject(FireStoreBooking.class)));
+            }
+            return bookings;
+        } catch (InterruptedException | ExecutionException e) {
+            e.printStackTrace();
+        }
+        return new ArrayList<>();
     }
 
     public List<Booking> getAllBookings() {
-        return bookings;
+        try {
+            List<Booking> bookings = new ArrayList<>();
+            Query query = firestoreDB.collection(BOOKINGS);
+            ApiFuture<QuerySnapshot> querySnapshot = query.get();
+            for (DocumentSnapshot document : querySnapshot.get().getDocuments()) {
+                bookings.add(new Booking(document.toObject(FireStoreBooking.class)));
+            }
+            return bookings;
+        } catch (InterruptedException | ExecutionException e) {
+            e.printStackTrace();
+        }
+        return new ArrayList<>();
     }
 
     public Set<String> getBestCustomers() {
         Map<String, Integer> ticketCounter = new HashMap<>();
-        for(var booking: bookings) {
+        for(var booking: getAllBookings()) {
             if (!ticketCounter.containsKey(booking.getCustomer())) {
                 ticketCounter.put(booking.getCustomer(), booking.getTickets().size());
             } else {
@@ -204,6 +251,16 @@ public class Model {
         boolean confirmedAllQuotes = true;
         try {
             for(var quote: quotes) {
+                if (quote.getCompany().equals(Utils.INTERNAL_COMPANY_NAME)) {
+                    Ticket ticket = internalCompany.reserveSeat(quote.getSeatId(), customer);
+                    if (ticket != null) {
+                        tmpTickets.add(ticket);
+                        continue;
+                    } else {
+                        throw new Exception("Seat is not available");
+                    }
+                }
+
                 var ticket = webClientBuilder
                         .baseUrl("https://" + quote.getCompany())
                         .build()
@@ -221,11 +278,17 @@ public class Model {
                 tmpTickets.add(ticket);
             }
         } catch (Exception e) {
+            logger.error(e.getMessage());
             confirmedAllQuotes = false;
         }
 
         if (!confirmedAllQuotes) {
             for (var ticket : tmpTickets) {
+                if (ticket.getCompany().equals(Utils.INTERNAL_COMPANY_NAME)) {
+                    internalCompany.removeReserveSeat(ticket.getSeatId());
+                    continue;
+                }
+
                 webClientBuilder
                         .baseUrl("https://" + ticket.getCompany())
                         .build()
@@ -240,12 +303,22 @@ public class Model {
                         .retryWhen(Retry.fixedDelay(MAX_ATTEMPTS, Duration.ofSeconds(DELAY_BETWEEN_ATTEMPTS)));
             }
         } else {
-            bookings.add(new Booking(
+            Booking booking = new Booking(
                     UUID.randomUUID(),
                     LocalDateTime.now(),
                     tmpTickets,
                     customer
-            ));
+            );
+            FireStoreBooking fireStoreBooking = new FireStoreBooking(booking);
+
+            CollectionReference bookingCollection = firestoreDB.collection(BOOKINGS);
+            DocumentReference bookingDoc = bookingCollection.document(fireStoreBooking.getId());
+            ApiFuture<WriteResult> future = bookingDoc.set(fireStoreBooking);
+            try {
+                System.out.println("Update time : " + future.get().getUpdateTime());
+            } catch (InterruptedException | ExecutionException e) {
+                e.printStackTrace();
+            }
         }
     }
 }

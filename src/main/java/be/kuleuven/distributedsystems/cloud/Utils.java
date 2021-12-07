@@ -11,4 +11,6 @@ public class Utils {
     public static DateTimeFormatter show_time_formatter = DateTimeFormatter.ofPattern("yyyy-MM-dd'T'HH:mm:ss");
     public static String PROJECT_ID = "ds-2-cloud";
     public static String TOPIC_ID = "confirm-quote";
+    public static String INTERNAL_COMPANY_NAME = "Internal Company";
+    public static String THEATER_DATA = "Theater data";
 }
