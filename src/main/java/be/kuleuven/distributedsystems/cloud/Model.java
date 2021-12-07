@@ -12,6 +12,7 @@ import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.core.ParameterizedTypeReference;
 import org.springframework.hateoas.CollectionModel;
 import org.springframework.security.core.context.SecurityContext;
+import org.springframework.security.core.context.SecurityContextHolder;
 import org.springframework.stereotype.Component;
 import org.springframework.web.reactive.function.client.WebClient;
 import reactor.util.retry.Retry;
@@ -48,6 +49,11 @@ public class Model {
     Logger logger = LoggerFactory.getLogger(Model.class);
 
     public List<Show> getShows() {
+
+//        SecurityContext context = SecurityContextHolder.getContext();
+//        var user = (User) context.getAuthentication().getPrincipal();
+//        logger.info("user: " + user.getEmail());
+
         List<Show> allShows = new ArrayList<>();
 
         for (String API_LOCATION :

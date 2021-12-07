@@ -23,6 +23,8 @@ import javax.servlet.http.HttpServletRequest;
 import javax.servlet.http.HttpServletResponse;
 import java.io.ByteArrayInputStream;
 import java.io.IOException;
+import java.io.PrintWriter;
+import java.io.StringWriter;
 import java.security.KeyFactory;
 import java.security.PublicKey;
 import java.security.cert.CertificateFactory;
@@ -66,8 +68,8 @@ public class SecurityFilter extends OncePerRequestFilter {
                 var email = user_json.get("email").asText();
                 var user_id = user_json.get("user_id").asText();
                 var roles = (user_json.has("roles"))?user_json.get("roles"): null;
-//                logger.info(user_json.toPrettyString());
-                logger.info(header_json.toPrettyString());
+//                logger.info("header: " + header_json.toString());
+//                logger.info("payload: "  + user_json.toPrettyString());
 
                 var role = "";
 
@@ -84,7 +86,7 @@ public class SecurityFilter extends OncePerRequestFilter {
 
                 if (isProduction) {
                     var pubKeysJson = Utils.json_mapper.readTree(getPubKey());
-                    var pubKey1 = pubKeysJson.get(pubKeysJson.fieldNames().next()).asText();
+                    var pubKey1 = pubKeysJson.get(header_json.get("kid").asText()).asText();
                     pubKey1 = pubKey1
                             .replace("-----BEGIN CERTIFICATE-----", "")
                             .replace("-----END CERTIFICATE-----", "")
@@ -103,18 +105,19 @@ public class SecurityFilter extends OncePerRequestFilter {
 
                     Algorithm algorithm = Algorithm.RSA256((RSAPublicKey) cert.getPublicKey(), null);
                     DecodedJWT jwt = JWT. require(algorithm)
-                            .withIssuer ("https://securetoken.google.com/" + projectId)
+                            .withIssuer ("https://securetoken.google.com/" + Utils.FIRE_STORE_PROJECT_ID)
                             .build()
                             .verify(token);
 
-                    var email1 = jwt.getClaim("email");
-                    logger.info("email1: " + email1);
+//                    var email1 = jwt.getClaim("email");
+//                    logger.info("email1: " + email1);
                 }
 
                 var user = new User(email, role, user_id);
                 SecurityContext context = SecurityContextHolder.getContext();
                 context.setAuthentication(new FirebaseAuthentication(user));
             } catch (Exception e) {
+//                e.printStackTrace();
                 logger.error(e.getMessage());
             }
         }
