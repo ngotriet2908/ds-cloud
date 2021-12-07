@@ -5,8 +5,16 @@ if (location.hostname === "localhost") {
         projectId: "demo-distributed-systems-kul",
     }
 } else {
-    // TODO: (level 2) replace with your own configuration
-    firebaseConfig = {}
+    firebaseConfig = {
+        apiKey: "AIzaSyAG3oaYeyQ2G64FIEC98CSzuAiHfS21Sqk",
+        authDomain: "ds-2-cloud.firebaseapp.com",
+        projectId: "ds-2-cloud",
+        storageBucket: "ds-2-cloud.appspot.com",
+        messagingSenderId: "961205004128",
+        appId: "1:961205004128:web:de97633136aadca935e005",
+        measurementId: "G-YBDWTE9DPF"
+
+    }
 }
 firebase.initializeApp(firebaseConfig);
 const auth = firebase.auth();

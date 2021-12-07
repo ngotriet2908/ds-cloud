@@ -12,9 +12,12 @@ import com.google.pubsub.v1.Subscription;
 import com.google.pubsub.v1.TopicName;
 import io.grpc.ManagedChannel;
 import io.grpc.ManagedChannelBuilder;
+import org.bouncycastle.math.raw.Mod;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.context.ApplicationContext;
+import org.springframework.context.annotation.AnnotationConfigApplicationContext;
 import org.springframework.core.env.Environment;
 import org.springframework.stereotype.Component;
 
@@ -28,6 +31,9 @@ public class PubSubComponent {
     @Autowired
     private Environment environment;
 
+    @Autowired
+    private Application context;
+
     private Publisher publisher;
 
     private static final String SUBSCRIPTION_ID = "confirm-quote";
@@ -35,6 +41,26 @@ public class PubSubComponent {
 
     @PostConstruct
     public void init() {
+        boolean isProduction = context.isProduction();
+        if(isProduction){
+            initProduction();
+        }
+        else{
+            initTesting();
+        }
+    }
+
+    private void initProduction(){
+        try {
+            TopicName topicName = TopicName.of(Utils.PROJECT_ID, Utils.TOPIC_ID);
+            publisher = Publisher.newBuilder(topicName).build();
+        }
+        catch (Exception e) {
+            logger.error(e.getMessage());
+        }
+    }
+
+    private void initTesting(){
         String hostport = "localhost:8083";
         ManagedChannel channel = ManagedChannelBuilder.forTarget(hostport).usePlaintext().build();
         try {
