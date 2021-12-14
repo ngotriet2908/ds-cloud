@@ -24,13 +24,16 @@ import java.util.stream.Collectors;
 
 @RestController
 public class ViewController {
-    private final Model model;
-    Logger logger = LoggerFactory.getLogger(ViewController.class);
 
     @Autowired
-    public ViewController(Model model) {
-        this.model = model;
-    }
+    private Model model;
+
+    Logger logger = LoggerFactory.getLogger(ViewController.class);
+
+    //@Autowired
+    //public ViewController(Model model) {
+    // this.model = model;
+    // }
 
     @GetMapping("/_ah/warmup")
     public void warmup() {
@@ -51,7 +54,6 @@ public class ViewController {
                 .get("data").getAsString();
         ByteArrayInputStream inputStream = new ByteArrayInputStream(Base64.getDecoder().decode(data.getBytes(StandardCharsets.UTF_8)));
         ObjectInputStream in = new ObjectInputStream(inputStream);
-
 
         List<Quote> quotes = (List<Quote>) in.readObject();
         model.confirmQuotesHelper(quotes, customer);

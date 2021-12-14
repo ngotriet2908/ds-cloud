@@ -5,7 +5,12 @@ import com.google.api.core.ApiFuture;
 import com.google.cloud.firestore.*;
 import com.google.protobuf.ByteString;
 import com.google.pubsub.v1.PubsubMessage;
-import org.checkerframework.checker.units.qual.A;
+import com.sendgrid.helpers.mail.Mail;
+import com.sendgrid.helpers.mail.objects.Content;
+import com.sendgrid.helpers.mail.objects.Email;
+import be.kuleuven.distributedsystems.cloud.company.ITheatreCompany;
+import be.kuleuven.distributedsystems.cloud.company.InternalTheatreCompany;
+import be.kuleuven.distributedsystems.cloud.company.TheatreCompany;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -14,7 +19,9 @@ import org.springframework.hateoas.CollectionModel;
 import org.springframework.stereotype.Component;
 import org.springframework.web.reactive.function.client.WebClient;
 import reactor.util.retry.Retry;
+import com.sendgrid.*;
 
+import javax.annotation.PostConstruct;
 import java.io.ByteArrayOutputStream;
 import java.io.IOException;
 import java.io.ObjectOutputStream;
@@ -34,10 +41,12 @@ public class Model {
     private PubSubComponent pubSubComponent;
 
     @Autowired
-    private InternalCompanyComponent internalCompany;
+    private InternalTheatreCompany internalCompany;
 
     @Autowired
     private Firestore firestoreDB;
+
+    private List<ITheatreCompany> theatreCompanies;
 
     private static final int MAX_ATTEMPTS = 10;
     private static final int DELAY_BETWEEN_ATTEMPTS = 2;
@@ -46,136 +55,62 @@ public class Model {
 
     Logger logger = LoggerFactory.getLogger(Model.class);
 
+    @PostConstruct
+    public void init(){
+        this.theatreCompanies = new LinkedList<>();
+        for(String API_LOCATION : Utils.API_LOCATIONS){
+            this.theatreCompanies.add(new TheatreCompany(API_LOCATION, webClientBuilder));
+        }
+        theatreCompanies.add(internalCompany);
+    }
+
     public List<Show> getShows() {
         List<Show> allShows = new ArrayList<>();
 
-        for (String API_LOCATION :
-             Utils.API_LOCATIONS) {
-            try {
-                List<Show> showsForAPI = webClientBuilder
-                        .baseUrl("https://" + API_LOCATION + "/")
-                        .build()
-                        .get()
-                        .uri(uriBuilder -> uriBuilder
-                                .pathSegment("shows")
-                                .queryParam("key", Utils.API_KEY)
-                                .build())
-                        .retrieve()
-                        .bodyToMono(new ParameterizedTypeReference<CollectionModel<Show>>() {})
-                        .retryWhen(Retry.fixedDelay(MAX_ATTEMPTS, Duration.ofSeconds(DELAY_BETWEEN_ATTEMPTS)))
-                        .block()
-                        .getContent()
-                        .stream().collect(Collectors.toList());
-
-                allShows.addAll(showsForAPI);
-            } catch (Exception e) {
-                e.printStackTrace();
-            }
+        try {
+            theatreCompanies.forEach((theatreCompany -> allShows.addAll(theatreCompany.getShows()) ));
         }
-
-        allShows.addAll(internalCompany.getShows());
+        catch (Exception e) {
+            e.printStackTrace();
+        }
         return allShows;
     }
 
     public Show getShow(String company, UUID showId) {
-        if (company.equals(Utils.INTERNAL_COMPANY_NAME)) {
-            return internalCompany.getShow(showId);
+        for (ITheatreCompany theatreCompany : theatreCompanies) {
+            if(theatreCompany.getCompanyName().equals(company)){
+                return  theatreCompany.getShow(showId);
+            }
         }
-
-        return webClientBuilder
-                .baseUrl("https://" + company)
-                .build()
-                .get()
-                .uri(uriBuilder -> uriBuilder
-                        .pathSegment("shows", showId.toString())
-                        .queryParam("key", Utils.API_KEY)
-                        .build())
-                .retrieve()
-                .bodyToMono(new ParameterizedTypeReference<Show>() {})
-                .retryWhen(Retry.fixedDelay(MAX_ATTEMPTS, Duration.ofSeconds(DELAY_BETWEEN_ATTEMPTS)))
-                .block();
+        return null;
     }
 
     public List<LocalDateTime> getShowTimes(String company, UUID showId) {
-        if (company.equals(Utils.INTERNAL_COMPANY_NAME)) {
-            return internalCompany.getShowTimes(showId);
+        for (ITheatreCompany theatreCompany : theatreCompanies) {
+            if(theatreCompany.getCompanyName().equals(company)){
+                return  theatreCompany.getShowTimes(showId);
+            }
         }
-
-        var showTimesString =  webClientBuilder
-                .baseUrl("https://" + company)
-                .build()
-                .get()
-                .uri(uriBuilder -> uriBuilder
-                        .pathSegment("shows", showId.toString(), "times")
-                        .queryParam("key", Utils.API_KEY)
-                        .build())
-                .retrieve()
-                .bodyToMono(new ParameterizedTypeReference<CollectionModel<String>>() {})
-                .retryWhen(Retry.fixedDelay(MAX_ATTEMPTS, Duration.ofSeconds(DELAY_BETWEEN_ATTEMPTS)))
-                .block()
-                .getContent();
-
-        return showTimesString.stream()
-                .map(string -> LocalDateTime.parse(string, Utils.show_time_formatter))
-                .collect(Collectors.toList());
+        return null;
     }
 
     public List<Seat> getAvailableSeats(String company, UUID showId, LocalDateTime time) {
-        if (company.equals(Utils.INTERNAL_COMPANY_NAME)) {
-            return internalCompany.getAvailableSeats(showId, time);
+        for (ITheatreCompany theatreCompany : theatreCompanies) {
+            if(theatreCompany.getCompanyName().equals(company)){
+                return  theatreCompany.getAvailableSeats(showId, time);
+            }
         }
-
-        return webClientBuilder
-                .baseUrl("https://" + company)
-                .build()
-                .get()
-                .uri(uriBuilder -> uriBuilder
-                        .pathSegment("shows", showId.toString(), "seats")
-                        .queryParam("key", Utils.API_KEY)
-                        .queryParam("time", time.toString())
-                        .queryParam("available", "true")
-                        .build())
-                .retrieve()
-                .bodyToMono(new ParameterizedTypeReference<CollectionModel<Seat>>() {})
-                .retryWhen(Retry.fixedDelay(MAX_ATTEMPTS, Duration.ofSeconds(DELAY_BETWEEN_ATTEMPTS)))
-                .block()
-                .getContent().stream().collect(Collectors.toList());
+        return null;
     }
 
     public Seat getSeat(String company, UUID showId, UUID seatId) {
-        if (company.equals(Utils.INTERNAL_COMPANY_NAME)) {
-            return internalCompany.getSeat(seatId);
+        for (ITheatreCompany theatreCompany : theatreCompanies) {
+            if(theatreCompany.getCompanyName().equals(company)){
+                return  theatreCompany.getSeat(showId,seatId);
+            }
         }
-
-        return webClientBuilder
-                .baseUrl("https://" + company)
-                .build()
-                .get()
-                .uri(uriBuilder -> uriBuilder
-                        .pathSegment("shows", showId.toString(), "seats", seatId.toString())
-                        .queryParam("key", Utils.API_KEY)
-                        .build())
-                .retrieve()
-                .bodyToMono(new ParameterizedTypeReference<Seat>() {})
-                .retryWhen(Retry.fixedDelay(MAX_ATTEMPTS, Duration.ofSeconds(DELAY_BETWEEN_ATTEMPTS)))
-                .block();
+        return null;
     }
-
-//    public Ticket getTicket(String company, UUID showId, UUID seatId) {
-//        return webClientBuilder
-//                .baseUrl("https://" + company)
-//                .build()
-//                .get()
-//                .uri(uriBuilder -> uriBuilder
-//                        .pathSegment("shows", showId.toString(), "seats", seatId.toString(), "ticket")
-//                        .queryParam("key", Utils.API_KEY)
-//                        .build())
-//                .retrieve()
-//                .bodyToMono(new ParameterizedTypeReference<Ticket>() {})
-//                .retryWhen(Retry.fixedDelay(MAX_ATTEMPTS, Duration.ofSeconds(DELAY_BETWEEN_ATTEMPTS)))
-//                .block();
-//    }
-
 
     public List<Booking> getBookings(String customer) {
         try {
@@ -241,41 +176,28 @@ public class Model {
         PubsubMessage pubsubMessage = PubsubMessage.newBuilder()
                 .setData(ByteString.copyFrom(byteArrayOutputStream.toByteArray()))
                 .putAttributes("customer", customer)
+                .putAttributes("email","stijn.martens@student.kuleuven.be")
                 .build();
+
         logger.info("Publishing via " + this.pubSubComponent.getPublisher().getTopicNameString());
         ApiFuture<String> future = this.pubSubComponent.getPublisher().publish(pubsubMessage);
     }
 
     public void confirmQuotesHelper(List<Quote> quotes, String customer) {
         List<Ticket> tmpTickets = new ArrayList<>();
+        Ticket ticket = null;
         boolean confirmedAllQuotes = true;
         try {
             for(var quote: quotes) {
-                if (quote.getCompany().equals(Utils.INTERNAL_COMPANY_NAME)) {
-                    Ticket ticket = internalCompany.reserveSeat(quote.getSeatId(), customer);
-                    if (ticket != null) {
-                        tmpTickets.add(ticket);
-                        continue;
-                    } else {
-                        throw new Exception("Seat is not available");
+                for (ITheatreCompany theatreCompany : theatreCompanies) {
+                    if(theatreCompany.getCompanyName().equals(quote.getCompany())){
+                        ticket = theatreCompany.reserveSeat(quote.getShowId(), quote.getSeatId(), customer);
                     }
                 }
-
-                var ticket = webClientBuilder
-                        .baseUrl("https://" + quote.getCompany())
-                        .build()
-                        .put()
-                        .uri(uriBuilder -> uriBuilder
-                                .pathSegment("shows", quote.getShowId().toString(), "seats", quote.getSeatId().toString(), "ticket")
-                                .queryParam("key", Utils.API_KEY)
-                                .queryParam("customer", customer)
-                                .build())
-                        .retrieve()
-                        .bodyToMono(new ParameterizedTypeReference<Ticket>() {})
-                        .retryWhen(Retry.fixedDelay(MAX_ATTEMPTS, Duration.ofSeconds(DELAY_BETWEEN_ATTEMPTS)))
-                        .block();
-
+                if (ticket == null)
+                    throw new Exception("Seat is not available");
                 tmpTickets.add(ticket);
+                ticket = null;
             }
         } catch (Exception e) {
             logger.error(e.getMessage());
@@ -283,24 +205,12 @@ public class Model {
         }
 
         if (!confirmedAllQuotes) {
-            for (var ticket : tmpTickets) {
-                if (ticket.getCompany().equals(Utils.INTERNAL_COMPANY_NAME)) {
-                    internalCompany.removeReserveSeat(ticket.getSeatId());
-                    continue;
+            for (Ticket reservedTicket : tmpTickets) {
+                for (ITheatreCompany theatreCompany : theatreCompanies) {
+                    if(theatreCompany.getCompanyName().equals(reservedTicket.getCompany())){
+                        theatreCompany.removeReserveSeat(reservedTicket.getShowId(), reservedTicket.getSeatId(), customer);
+                    }
                 }
-
-                webClientBuilder
-                        .baseUrl("https://" + ticket.getCompany())
-                        .build()
-                        .put()
-                        .uri(uriBuilder -> uriBuilder
-                                .pathSegment("shows", ticket.getShowId().toString(), "seats", ticket.getSeatId().toString(), "ticket")
-                                .queryParam("key", Utils.API_KEY)
-                                .queryParam("customer", customer)
-                                .build())
-                        .retrieve()
-                        .bodyToMono(Void.class)
-                        .retryWhen(Retry.fixedDelay(MAX_ATTEMPTS, Duration.ofSeconds(DELAY_BETWEEN_ATTEMPTS)));
             }
         } else {
             Booking booking = new Booking(
@@ -309,7 +219,10 @@ public class Model {
                     tmpTickets,
                     customer
             );
+
             FireStoreBooking fireStoreBooking = new FireStoreBooking(booking);
+
+            sendFeedback(customer,"Test");
 
             CollectionReference bookingCollection = firestoreDB.collection(BOOKINGS);
             DocumentReference bookingDoc = bookingCollection.document(fireStoreBooking.getId());
@@ -321,4 +234,29 @@ public class Model {
             }
         }
     }
+
+    void sendFeedback(String email , String message){
+
+        Email from = new Email("stijn.martens@student.kuleuven.be");
+        String subject = "Sending with Twilio SendGrid is Fun";
+        Email to = new Email(email);
+        Content content = new Content("text/plain", "and easy to do anywhere, even with Java");
+        Mail mail = new Mail(from, subject, to, content);
+
+        SendGrid sg = new SendGrid(Utils.SENDGRID_API);
+        Request request = new Request();
+        try {
+            request.setMethod(Method.POST);
+            request.setEndpoint("mail/send");
+            request.setBody(mail.build());
+            Response response = sg.api(request);
+
+            System.out.println(response.getStatusCode());
+            System.out.println(response.getBody());
+            System.out.println(response.getHeaders());
+        } catch (IOException ex) {
+            logger.error(ex.toString());
+        }
+    }
+
 }

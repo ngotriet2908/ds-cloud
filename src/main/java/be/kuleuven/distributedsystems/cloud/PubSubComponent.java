@@ -29,9 +29,6 @@ public class PubSubComponent {
     Logger logger = LoggerFactory.getLogger(PubSubComponent.class);
 
     @Autowired
-    private Environment environment;
-
-    @Autowired
     private Application context;
 
     private Publisher publisher;

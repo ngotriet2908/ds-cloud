@@ -1,17 +1,16 @@
-package be.kuleuven.distributedsystems.cloud;
+package be.kuleuven.distributedsystems.cloud.company;
 
+import be.kuleuven.distributedsystems.cloud.Pair;
+import be.kuleuven.distributedsystems.cloud.Utils;
 import be.kuleuven.distributedsystems.cloud.entities.*;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.fasterxml.jackson.databind.node.ArrayNode;
 import com.google.api.core.ApiFuture;
 import com.google.cloud.firestore.*;
-import org.checkerframework.checker.units.qual.A;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Autowired;
-import org.springframework.cglib.core.Local;
 import org.springframework.core.io.ClassPathResource;
-import org.springframework.security.core.parameters.P;
 import org.springframework.stereotype.Component;
 
 import javax.annotation.PostConstruct;
@@ -22,8 +21,8 @@ import java.util.concurrent.ExecutionException;
 import java.util.stream.Collectors;
 
 @Component
-public class InternalCompanyComponent {
-    Logger logger = LoggerFactory.getLogger(InternalCompanyComponent.class);
+public class InternalTheatreCompany implements ITheatreCompany {
+    Logger logger = LoggerFactory.getLogger(InternalTheatreCompany.class);
 
     @Autowired
     private Firestore firestoreDB;
@@ -52,8 +51,7 @@ public class InternalCompanyComponent {
                     .collection(Utils.THEATER_DATA)
                     .document(Utils.INTERNAL_COMPANY_NAME)
                     .collection("Shows")
-                    .whereEqualTo("showId", showId.toString())
-                    ;
+                    .whereEqualTo("showId", showId.toString());
 
             ApiFuture<QuerySnapshot> querySnapshot = query.get();
             for (DocumentSnapshot document : querySnapshot.get().getDocuments()) {
@@ -63,6 +61,11 @@ public class InternalCompanyComponent {
             logger.error(e.getMessage());
         }
         return null;
+    }
+
+    @Override
+    public String getCompanyName() {
+        return Utils.INTERNAL_COMPANY_NAME;
     }
 
     public List<LocalDateTime> getShowTimes(UUID showId) {
@@ -112,14 +115,13 @@ public class InternalCompanyComponent {
         return new ArrayList<>();
     }
 
-    public Seat getSeat(UUID seatId) {
+    public Seat getSeat(UUID showId, UUID seatId) {
         try {
             Query query = firestoreDB
                     .collection(Utils.THEATER_DATA)
                     .document(Utils.INTERNAL_COMPANY_NAME)
                     .collection("Seats")
-                    .whereEqualTo("seatId", seatId.toString())
-                    ;
+                    .whereEqualTo("seatId", seatId.toString());
             List<Seat> seats = new ArrayList<>();
             ApiFuture<QuerySnapshot> querySnapshot = query.get();
             for (DocumentSnapshot document : querySnapshot.get().getDocuments()) {
@@ -171,7 +173,7 @@ public class InternalCompanyComponent {
         }
     }
 
-    public Ticket reserveSeat(UUID seatId, String customer) throws ExecutionException, InterruptedException {
+    public Ticket reserveSeat(UUID showId, UUID seatId, String customer) throws ExecutionException, InterruptedException {
         final DocumentReference docRef = firestoreDB
                 .collection(Utils.THEATER_DATA)
                 .document(Utils.INTERNAL_COMPANY_NAME)
@@ -206,7 +208,7 @@ public class InternalCompanyComponent {
         );
     }
 
-    public void removeReserveSeat(UUID seatId) {
+    public void removeReserveSeat(UUID showId, UUID seatId, String customer) {
         final DocumentReference docRef = firestoreDB
                 .collection(Utils.THEATER_DATA)
                 .document(Utils.INTERNAL_COMPANY_NAME)
@@ -257,7 +259,7 @@ public class InternalCompanyComponent {
                 ));
             }
 
-            logger.info("Internal company: " + shows.size());
+            logger.info("Internal be.kuleuven.distributedsystems.cloud.company: " + shows.size());
             return new Pair(shows, seatsMap);
         } catch (IOException e) {
             logger.error(e.getMessage());

@@ -96,7 +96,6 @@ public class Application {
             catch (Exception e) {
                 return null;
             }
-
         }
         else {
             String hostport = "localhost:8084";
@@ -110,8 +109,5 @@ public class Application {
                     .build()
                     .getService();
         }
-
-
-
      }
 }
