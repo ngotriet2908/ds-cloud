@@ -68,10 +68,6 @@ public class Model {
 
     public List<Show> getShows() {
 
-//        SecurityContext context = SecurityContextHolder.getContext();
-//        var user = (User) context.getAuthentication().getPrincipal();
-//        logger.info("user: " + user.getEmail());
-
         List<Show> allShows = new ArrayList<>();
 
         try {
@@ -195,7 +191,11 @@ public class Model {
         Ticket ticket = null;
         boolean confirmedAllQuotes = true;
         try {
-            for(var quote: quotes) {
+            var externalQuotes = quotes.stream()
+                    .filter(quote ->
+                            !quote.getCompany().equals(internalCompany.getCompanyName())
+                    ).collect(Collectors.toList());
+            for(var quote: externalQuotes) {
                 for (ITheatreCompany theatreCompany : theatreCompanies) {
                     if(theatreCompany.getCompanyName().equals(quote.getCompany())){
                         ticket = theatreCompany.reserveSeat(quote.getShowId(), quote.getSeatId(), customer);
@@ -206,6 +206,20 @@ public class Model {
                 tmpTickets.add(ticket);
                 ticket = null;
             }
+            var internalQuotes = quotes.stream()
+                    .filter(quote ->
+                            quote.getCompany().equals(internalCompany.getCompanyName())
+                    ).collect(Collectors.toList());
+            var internalSeatIds = internalQuotes.stream()
+                    .map(Quote::getSeatId)
+                    .collect(Collectors.toList());
+            List<Ticket> internalsTicket = internalCompany.reserveSeats(internalSeatIds, customer);
+            if (internalsTicket == null) {
+                throw new Exception("Seats is not available");
+            } else {
+                tmpTickets.addAll(internalsTicket);
+            }
+
         } catch (Exception e) {
             logger.error(e.getMessage());
             confirmedAllQuotes = false;
@@ -229,7 +243,9 @@ public class Model {
 
             FireStoreBooking fireStoreBooking = new FireStoreBooking(booking);
 
-            sendFeedback(customer,"Test");
+            sendFeedback(customer,"Your order " + booking.getId() + " is ready: " + "\n"
+                + booking.toString()
+            );
 
             CollectionReference bookingCollection = firestoreDB.collection(BOOKINGS);
             DocumentReference bookingDoc = bookingCollection.document(fireStoreBooking.getId());
@@ -243,11 +259,10 @@ public class Model {
     }
 
     void sendFeedback(String email , String message){
-
-        Email from = new Email("stijn.martens@student.kuleuven.be");
-        String subject = "Sending with Twilio SendGrid is Fun";
+        Email from = new Email("triet.ngo@student.kuleuven.be");
+        String subject = "Your order is ready";
         Email to = new Email(email);
-        Content content = new Content("text/plain", "and easy to do anywhere, even with Java");
+        Content content = new Content("text/plain",  message);
         Mail mail = new Mail(from, subject, to, content);
 
         SendGrid sg = new SendGrid(Utils.SENDGRID_API);
@@ -258,9 +273,11 @@ public class Model {
             request.setBody(mail.build());
             Response response = sg.api(request);
 
-            System.out.println(response.getStatusCode());
-            System.out.println(response.getBody());
-            System.out.println(response.getHeaders());
+            logger.info("sendGrid: " + email);
+            logger.info("sendGrid: " + message);
+            logger.info("sendGrid: " + response.getStatusCode());
+            logger.info("sendGrid: " + response.getBody());
+            logger.info("sendGrid: " + response.getHeaders());
         } catch (IOException ex) {
             logger.error(ex.toString());
         }

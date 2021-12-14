@@ -64,4 +64,14 @@ public class Booking {
     public String getCustomer() {
         return this.customer;
     }
+
+    @Override
+    public String toString() {
+        return "Booking{" + "\n" +
+                "id=" + id + "\n" +
+                ", time=" + time + "\n" +
+                ", tickets=" + tickets + "\n" +
+                ", customer='" + customer + '\'' + "\n" +
+                '}' + "\n";
+    }
 }

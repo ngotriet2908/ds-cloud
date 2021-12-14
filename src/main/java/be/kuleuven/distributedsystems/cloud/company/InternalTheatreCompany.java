@@ -151,6 +151,7 @@ public class InternalTheatreCompany implements ITheatreCompany {
             Query query = showsCollections.whereEqualTo("name", show.getName());
             ApiFuture<QuerySnapshot> querySnapshot = query.get();
             if (querySnapshot.get().getDocuments().size() == 0) {
+                logger.error("not found show " + show.getName());
                 isInit = false;
             }
         }
@@ -173,6 +174,50 @@ public class InternalTheatreCompany implements ITheatreCompany {
 
             }
         }
+    }
+
+    public List<Ticket> reserveSeats(List<UUID> seatIds, String customer) throws ExecutionException, InterruptedException {
+
+        final CollectionReference docRef = firestoreDB
+                .collection(Utils.THEATER_DATA)
+                .document(Utils.INTERNAL_COMPANY_NAME)
+                .collection("Seats");
+
+        ApiFuture<List<Seat>> transactionFuture = firestoreDB.runTransaction(transaction -> {
+            List<Seat> seats = new ArrayList<>();
+            for(var seatIdUUID: seatIds) {
+                var seatId = seatIdUUID.toString();
+                DocumentSnapshot snapshot = transaction.get(docRef.document(seatId)).get();
+                Boolean isAvailable = snapshot.getBoolean("available");
+                Seat seat = new Seat(snapshot.toObject(FireStoreSeat.class));
+
+                if (isAvailable == null) {
+                    logger.error("Seat " + seat.getSeatId() + " not exist");
+                    return null;
+                }
+                if (!isAvailable) {
+                    logger.error("Seat " + seat.getSeatId() + " is already reserved");
+                    return null;
+                }
+                seats.add(seat);
+            }
+            for(var seat: seats) {
+                transaction.update(docRef.document(seat.getSeatId().toString()), "available", false);
+            }
+            return seats;
+        });
+
+        List<Seat> seats = transactionFuture.get();
+        if (seats == null) return null;
+        return seats.stream().map(
+                seat -> new Ticket(
+                        seat.getCompany(),
+                        seat.getShowId(),
+                        seat.getSeatId(),
+                        UUID.randomUUID(),
+                        customer)
+        ).collect(Collectors.toList());
+
     }
 
     public Ticket reserveSeat(UUID showId, UUID seatId, String customer) throws ExecutionException, InterruptedException {

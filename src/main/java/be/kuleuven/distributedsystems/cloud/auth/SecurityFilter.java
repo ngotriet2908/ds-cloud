@@ -52,6 +52,8 @@ public class SecurityFilter extends OncePerRequestFilter {
 
     @Override
     protected void doFilterInternal(HttpServletRequest request, HttpServletResponse response, FilterChain filterChain) throws ServletException, IOException {
+//        logger.info("projectId: " + projectId);
+
         var session = WebUtils.getCookie(request, "session");
         if (session != null) {
             try {
@@ -105,7 +107,7 @@ public class SecurityFilter extends OncePerRequestFilter {
 
                     Algorithm algorithm = Algorithm.RSA256((RSAPublicKey) cert.getPublicKey(), null);
                     DecodedJWT jwt = JWT. require(algorithm)
-                            .withIssuer ("https://securetoken.google.com/" + Utils.FIRE_STORE_PROJECT_ID)
+                            .withIssuer ("https://securetoken.google.com/" + projectId)
                             .build()
                             .verify(token);
 
@@ -198,7 +200,7 @@ public class SecurityFilter extends OncePerRequestFilter {
 
         @Override
         public String getName() {
-            return null;
+            return user.getEmail();
         }
     }
 }

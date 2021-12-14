@@ -31,6 +31,9 @@ public class PubSubComponent {
     @Autowired
     private Application context;
 
+    @Autowired
+    private String projectId;
+
     private Publisher publisher;
 
     private static final String SUBSCRIPTION_ID = "confirm-quote";
@@ -49,7 +52,7 @@ public class PubSubComponent {
 
     private void initProduction(){
         try {
-            TopicName topicName = TopicName.of(Utils.PROJECT_ID, Utils.TOPIC_ID);
+            TopicName topicName = TopicName.of(projectId, Utils.TOPIC_ID);
             publisher = Publisher.newBuilder(topicName).build();
         }
         catch (Exception e) {
@@ -74,7 +77,7 @@ public class PubSubComponent {
                                     .setCredentialsProvider(credentialsProvider)
                                     .build());
 
-            TopicName topicName = TopicName.of(Utils.PROJECT_ID, Utils.TOPIC_ID);
+            TopicName topicName = TopicName.of(projectId, Utils.TOPIC_ID);
 
             try {
                 topicClient.createTopic(topicName);
@@ -109,7 +112,7 @@ public class PubSubComponent {
             // Create a push subscription with default acknowledgement deadline of 10 seconds.
             // Messages not successfully acknowledged within 10 seconds will get resent by the server.
             ProjectSubscriptionName subscriptionName =
-                    ProjectSubscriptionName.of(Utils.PROJECT_ID, SUBSCRIPTION_ID);
+                    ProjectSubscriptionName.of(projectId, SUBSCRIPTION_ID);
 
             try {
                 Subscription subscription =

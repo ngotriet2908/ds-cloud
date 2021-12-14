@@ -64,4 +64,15 @@ public class Ticket {
     public int hashCode() {
         return this.company.hashCode() * this.showId.hashCode() * this.seatId.hashCode() * this.ticketId.hashCode();
     }
+
+    @Override
+    public String toString() {
+        return "Ticket{" + "\n" +
+                "company='" + company + '\'' + "\n" +
+                ", showId=" + showId + "\n" +
+                ", seatId=" + seatId + "\n" +
+                ", ticketId=" + ticketId + "\n" +
+                ", customer='" + customer + '\'' + "\n" +
+                '}' + "\n";
+    }
 }

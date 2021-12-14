@@ -65,7 +65,7 @@ public class Application {
 
     @Bean
     public String projectId() {
-        return "eng-electron-334411";
+        return "ds-cloud-group-33";
     }
 
     /*
@@ -94,7 +94,7 @@ public class Application {
                         .getDefaultInstance()
                         .toBuilder()
                         .setCredentials(credentials)
-                        .setProjectId(Utils.PROJECT_ID)
+                        .setProjectId(projectId())
                         .build()
                         .getService();
             }
