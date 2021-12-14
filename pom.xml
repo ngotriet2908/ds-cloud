@@ -159,7 +159,7 @@
                 <version>2.4.0</version>
                 <configuration>
                     <version>1</version>
-                    <projectId>ds-2-cloud</projectId>
+                    <projectId>eng-electron-334411</projectId>
                     <cloudSdkVersion>358.0.0</cloudSdkVersion>
                 </configuration>
             </plugin>

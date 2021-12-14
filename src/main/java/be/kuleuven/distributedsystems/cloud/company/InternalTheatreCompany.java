@@ -161,14 +161,16 @@ public class InternalTheatreCompany implements ITheatreCompany {
                 FireStoreShow fireStoreShow = new FireStoreShow(show);
                 DocumentReference showDoc = showsCollections.document(fireStoreShow.getShowId());
                 ApiFuture<WriteResult> future = showDoc.set(fireStoreShow);
-                logger.info("Create show " + fireStoreShow.getName() + ": " + future.get().getUpdateTime());
+                logger.info("Created show " + fireStoreShow.getName() + ": " + future.get().getUpdateTime());
                 List<Seat> seats = seatsMap.get(show.getShowId());
                 for(Seat seat: seats) {
                     FireStoreSeat fireStoreSeat = new FireStoreSeat(seat);
                     DocumentReference seatDoc = seatsCollections.document(fireStoreSeat.getSeatId());
                     ApiFuture<WriteResult> future1 = seatDoc.set(fireStoreSeat);
-                    logger.info("Create seat " + fireStoreSeat.getName() + ": " + future1.get().getUpdateTime());
+                    future1.get();
                 }
+                logger.info("Created seats for show " + fireStoreShow.getName() + ": " + future.get().getUpdateTime());
+
             }
         }
     }

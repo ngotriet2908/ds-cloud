@@ -6,15 +6,14 @@ if (location.hostname === "localhost") {
     }
 } else {
     firebaseConfig = {
-        apiKey: "AIzaSyAG3oaYeyQ2G64FIEC98CSzuAiHfS21Sqk",
-        authDomain: "ds-2-cloud.firebaseapp.com",
-        projectId: "ds-2-cloud",
-        storageBucket: "ds-2-cloud.appspot.com",
-        messagingSenderId: "961205004128",
-        appId: "1:961205004128:web:de97633136aadca935e005",
-        measurementId: "G-YBDWTE9DPF"
-
-    }
+        apiKey: "AIzaSyD0p46DIyyXnM23mABR1lJxWJJEQLvADZM",
+        authDomain: "fir-distributed-systems-56ea0.firebaseapp.com",
+        projectId: "fir-distributed-systems-56ea0",
+        storageBucket: "fir-distributed-systems-56ea0.appspot.com",
+        messagingSenderId: "166156692252",
+        appId: "1:166156692252:web:8e054ff0478bda24c268d9",
+        measurementId: "G-8ZM56ZFGVJ"
+    };
 }
 firebase.initializeApp(firebaseConfig);
 const auth = firebase.auth();
