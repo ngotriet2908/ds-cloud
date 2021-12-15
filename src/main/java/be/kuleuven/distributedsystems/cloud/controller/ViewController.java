@@ -30,11 +30,6 @@ public class ViewController {
 
     Logger logger = LoggerFactory.getLogger(ViewController.class);
 
-    //@Autowired
-    //public ViewController(Model model) {
-    // this.model = model;
-    // }
-
     @GetMapping("/_ah/warmup")
     public void warmup() {
     }

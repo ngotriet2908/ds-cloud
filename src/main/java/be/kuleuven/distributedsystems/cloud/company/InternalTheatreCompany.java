@@ -74,8 +74,7 @@ public class InternalTheatreCompany implements ITheatreCompany {
                     .collection(Utils.THEATER_DATA)
                     .document(Utils.INTERNAL_COMPANY_NAME)
                     .collection("Seats")
-                    .whereEqualTo("showId", showId.toString())
-                    ;
+                    .whereEqualTo("showId", showId.toString());
             List<String> times = new ArrayList<>();
             ApiFuture<QuerySnapshot> querySnapshot = query.get();
             for (DocumentSnapshot document : querySnapshot.get().getDocuments()) {
@@ -101,8 +100,7 @@ public class InternalTheatreCompany implements ITheatreCompany {
                     .collection("Seats")
                     .whereEqualTo("showId", showId.toString())
                     .whereEqualTo("time", time.format(Utils.show_time_formatter))
-                    .whereEqualTo("available", true)
-                    ;
+                    .whereEqualTo("available", true);
             List<Seat> seats = new ArrayList<>();
             ApiFuture<QuerySnapshot> querySnapshot = query.get();
             for (DocumentSnapshot document : querySnapshot.get().getDocuments()) {

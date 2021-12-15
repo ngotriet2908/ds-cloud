@@ -52,7 +52,6 @@ public class SecurityFilter extends OncePerRequestFilter {
 
     @Override
     protected void doFilterInternal(HttpServletRequest request, HttpServletResponse response, FilterChain filterChain) throws ServletException, IOException {
-//        logger.info("projectId: " + projectId);
 
         var session = WebUtils.getCookie(request, "session");
         if (session != null) {
@@ -70,8 +69,6 @@ public class SecurityFilter extends OncePerRequestFilter {
                 var email = user_json.get("email").asText();
                 var user_id = user_json.get("user_id").asText();
                 var roles = (user_json.has("roles"))?user_json.get("roles"): null;
-//                logger.info("header: " + header_json.toString());
-//                logger.info("payload: "  + user_json.toPrettyString());
 
                 var role = "";
 
@@ -111,15 +108,12 @@ public class SecurityFilter extends OncePerRequestFilter {
                             .build()
                             .verify(token);
 
-//                    var email1 = jwt.getClaim("email");
-//                    logger.info("email1: " + email1);
                 }
 
                 var user = new User(email, role, user_id);
                 SecurityContext context = SecurityContextHolder.getContext();
                 context.setAuthentication(new FirebaseAuthentication(user));
             } catch (Exception e) {
-//                e.printStackTrace();
                 logger.error(e.getMessage());
             }
         }
